@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getShipment, updateShipmentStatus } from "../api/shipments";
 import { getDocuments, deleteDocument } from "../api/documents";
 import DocumentUpload from "../components/DocumentUpload";
+import ParsePanel from "../components/ParsePanel";
 
 const STATUS_ORDER = ["draft", "in_transit", "at_customs", "customs_cleared", "delivered"];
 
@@ -87,6 +88,7 @@ export default function ShipmentDetail() {
         </span>
       </div>
 
+      {/* Status tracker */}
       <div style={{ background: "#fff", border: "1px solid #e5e3dc", borderRadius: "10px", padding: "1.25rem", marginBottom: "1.25rem" }}>
         <p style={{ fontSize: "12px", fontWeight: 500, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 1rem" }}>
           Status
@@ -137,6 +139,7 @@ export default function ShipmentDetail() {
         </div>
       </div>
 
+      {/* Shipment details */}
       <div style={{ background: "#fff", border: "1px solid #e5e3dc", borderRadius: "10px", padding: "1.25rem", marginBottom: "1.25rem" }}>
         <p style={{ fontSize: "12px", fontWeight: 500, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 1rem" }}>
           Details
@@ -158,41 +161,46 @@ export default function ShipmentDetail() {
         </div>
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #e5e3dc", borderRadius: "10px", padding: "1.25rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <p style={{ fontSize: "12px", fontWeight: 500, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
-            Documents ({documents.length})
-          </p>
-        </div>
-        {documents.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "1rem" }}>
-            {documents.map((doc) => (
-              <div key={doc.id} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "10px 12px", background: "#f8f7f4", borderRadius: "8px",
-              }}>
-                <div>
-                  <p style={{ fontSize: "13px", fontWeight: 500, margin: "0 0 2px" }}>{doc.filename}</p>
-                  <p style={{ fontSize: "12px", color: "#aaa", margin: 0 }}>
-                    {doc.doc_type.replace(/_/g, " ")} · {doc.status}
-                    {doc.file_size_bytes ? ` · ${(doc.file_size_bytes / 1024).toFixed(1)} KB` : ""}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeleteDoc(doc.id)}
-                  style={{ background: "none", border: "none", color: "#e24b4a", cursor: "pointer", fontSize: "13px" }}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
+      {/* Documents */}
+<div style={{ background: "#fff", border: "1px solid #e5e3dc", borderRadius: "10px", padding: "1.25rem" }}>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+    <p style={{ fontSize: "12px", fontWeight: 500, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
+      Documents ({documents.length})
+    </p>
+  </div>
+  {documents.length > 0 && (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "1rem" }}>
+      {documents.map((doc) => (
+        <div key={doc.id} style={{ padding: "12px", background: "#f8f7f4", borderRadius: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <p style={{ fontSize: "13px", fontWeight: 500, margin: "0 0 2px" }}>{doc.filename}</p>
+              <p style={{ fontSize: "12px", color: "#aaa", margin: 0 }}>
+                {doc.doc_type.replace(/_/g, " ")}
+                {doc.file_size_bytes ? ` · ${(doc.file_size_bytes / 1024).toFixed(1)} KB` : ""}
+              </p>
+            </div>
+            <button
+              onClick={() => handleDeleteDoc(doc.id)}
+              style={{ background: "none", border: "none", color: "#e24b4a", cursor: "pointer", fontSize: "13px" }}
+            >
+              Delete
+            </button>
           </div>
-        )}
-        <DocumentUpload
-          shipmentId={id}
-          onUploaded={(doc) => setDocuments((prev) => [...prev, doc])}
-        />
-      </div>
+          <ParsePanel
+            shipmentId={id}
+            doc={doc}
+            onUpdated={(updated) => setDocuments(documents.map(d => d.id === updated.id ? updated : d))}
+          />
+        </div>
+      ))}
+    </div>
+  )}
+  <DocumentUpload
+    shipmentId={id}
+    onUploaded={(doc) => setDocuments((prev) => [...prev, doc])}
+  />
+</div>
     </div>
   );
 }

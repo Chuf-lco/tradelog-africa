@@ -6,6 +6,7 @@ app = FastAPI(
     title="TradeLog Africa",
     description="Import/export shipment logger and document consolidator",
     version="0.1.0",
+    redirect_slasher=False
 )
 
 app.add_middleware(
