@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getShipments } from "../api/shipments";
+import { SkeletonList, EmptyState, ErrorState } from "../components/UI";
 
 const STATUS_COLORS = {
   draft: { bg: "#f1efe8", color: "#5f5e5a" },
@@ -11,33 +12,58 @@ const STATUS_COLORS = {
   on_hold: { bg: "#faece7", color: "#993c1d" },
 };
 
+const STATUS_LABELS = {
+  draft: "Draft",
+  in_transit: "In Transit",
+  at_customs: "At Customs",
+  customs_cleared: "Customs Cleared",
+  delivered: "Delivered",
+  on_hold: "On Hold",
+};
+
 export default function Shipments() {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     getShipments()
       .then(setShipments)
-      .catch(() => setError("Failed to load shipments"))
+      .catch(() => setError("Could not load shipments. Is the API running?"))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  if (loading) return <p style={{ color: "#888", fontSize: "14px" }}>Loading shipments...</p>;
-  if (error) return <p style={{ color: "#e24b4a", fontSize: "14px" }}>{error}</p>;
+  useEffect(() => { load(); }, []);
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: "20px", fontWeight: 500, margin: 0 }}>Shipments</h1>
+        <div>
+          <h1 style={{ fontSize: "18px", fontWeight: 600, margin: "0 0 2px", letterSpacing: "-0.01em" }}>Shipments</h1>
+          {!loading && !error && (
+            <p style={{ fontSize: "13px", color: "#aaa", margin: 0 }}>
+              {shipments.length} {shipments.length === 1 ? "shipment" : "shipments"}
+            </p>
+          )}
+        </div>
       </div>
 
-      {shipments.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "4rem 0", color: "#888", fontSize: "14px" }}>
-          No shipments yet. Create one via the API to get started.
-        </div>
-      ) : (
+      {loading && <SkeletonList count={4} />}
+
+      {error && <ErrorState message={error} onRetry={load} />}
+
+      {!loading && !error && shipments.length === 0 && (
+        <EmptyState
+          icon="📦"
+          title="No shipments yet"
+          description="Create your first shipment via the API to get started tracking imports and exports."
+        />
+      )}
+
+      {!loading && !error && shipments.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {shipments.map((s) => {
             const statusStyle = STATUS_COLORS[s.status] || STATUS_COLORS.draft;
@@ -54,32 +80,37 @@ export default function Shipments() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  transition: "border-color 0.15s",
+                  transition: "border-color 0.15s, box-shadow 0.15s",
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = "#bbb"}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e5e3dc"}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#bbb";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e5e3dc";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
               >
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: "14px", marginBottom: "4px" }}>
+                  <div style={{ fontWeight: 500, fontSize: "14px", marginBottom: "4px", color: "#1a1a1a" }}>
                     {s.ref_number}
                   </div>
-                  <div style={{ fontSize: "13px", color: "#888" }}>
+                  <div style={{ fontSize: "13px", color: "#999" }}>
                     {s.origin_country} → {s.destination_country}
+                    <span style={{ margin: "0 6px", color: "#ddd" }}>·</span>
+                    {s.direction === "import_" ? "Import" : "Export"}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ fontSize: "12px", color: "#aaa" }}>
-                    {s.direction === "import_" ? "Import" : "Export"}
-                  </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {s.eta && (
+                    <span style={{ fontSize: "12px", color: "#bbb" }}>ETA {s.eta}</span>
+                  )}
                   <span style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    padding: "3px 10px",
-                    borderRadius: "20px",
-                    background: statusStyle.bg,
-                    color: statusStyle.color,
+                    fontSize: "12px", fontWeight: 500,
+                    padding: "3px 10px", borderRadius: "20px",
+                    background: statusStyle.bg, color: statusStyle.color,
                   }}>
-                    {s.status.replace("_", " ")}
+                    {STATUS_LABELS[s.status] || s.status}
                   </span>
                 </div>
               </div>

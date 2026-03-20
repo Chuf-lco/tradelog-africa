@@ -107,3 +107,70 @@ def delete_shipment(shipment_id: uuid.UUID, db: Session = Depends(get_db)):
     shipment = _get_or_404(db, shipment_id)
     db.delete(shipment)
     db.commit()
+
+
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+from app.models.party import Party
+from app.models.document import Document
+from app.services.report import generate_shipment_report
+
+
+@router.get("/{shipment_id}/report/json")
+def get_shipment_report_json(shipment_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Returns shipment summary as JSON for on-screen view."""
+    shipment = _get_or_404(db, shipment_id)
+    shipper = db.query(Party).filter(Party.id == shipment.shipper_id).first()
+    consignee = db.query(Party).filter(Party.id == shipment.consignee_id).first()
+    documents = db.query(Document).filter(Document.shipment_id == shipment_id).all()
+
+    return {
+        "shipment": {
+            "ref_number": shipment.ref_number,
+            "status": shipment.status.value,
+            "direction": shipment.direction.value,
+            "origin_country": shipment.origin_country,
+            "origin_port": shipment.origin_port,
+            "destination_country": shipment.destination_country,
+            "destination_port": shipment.destination_port,
+            "incoterms": shipment.incoterms.value if shipment.incoterms else None,
+            "commodity": shipment.commodity,
+            "hs_code": shipment.hs_code,
+            "gross_weight_kg": shipment.gross_weight_kg,
+            "etd": str(shipment.etd) if shipment.etd else None,
+            "eta": str(shipment.eta) if shipment.eta else None,
+            "ata": str(shipment.ata) if shipment.ata else None,
+            "notes": shipment.notes,
+        },
+        "shipper": {"name": shipper.name, "country": shipper.country, "city": shipper.city, "tax_pin": shipper.tax_pin} if shipper else None,
+        "consignee": {"name": consignee.name, "country": consignee.country, "city": consignee.city, "tax_pin": consignee.tax_pin} if consignee else None,
+        "documents": [
+            {
+                "filename": d.filename,
+                "doc_type": d.doc_type.value,
+                "status": d.status.value,
+                "file_size_bytes": d.file_size_bytes,
+                "parsed_data": d.parsed_data,
+            }
+            for d in documents
+        ],
+    }
+
+
+@router.get("/{shipment_id}/report/pdf")
+def get_shipment_report_pdf(shipment_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Generates and streams a PDF shipment summary report."""
+    shipment = _get_or_404(db, shipment_id)
+    shipper = db.query(Party).filter(Party.id == shipment.shipper_id).first()
+    consignee = db.query(Party).filter(Party.id == shipment.consignee_id).first()
+    documents = db.query(Document).filter(Document.shipment_id == shipment_id).all()
+
+    pdf_bytes = generate_shipment_report(shipment, shipper, consignee, documents)
+
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="tradelog-{shipment.ref_number}.pdf"'
+        }
+    )

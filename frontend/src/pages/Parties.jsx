@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getParties } from "../api/parties";
+import { SkeletonList, EmptyState, ErrorState } from "../components/UI";
 
 const ROLE_COLORS = {
   importer: { bg: "#e6f1fb", color: "#185fa5" },
@@ -14,27 +15,43 @@ export default function Parties() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     getParties()
       .then(setParties)
-      .catch(() => setError("Failed to load parties"))
+      .catch(() => setError("Could not load parties. Is the API running?"))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  if (loading) return <p style={{ color: "#888", fontSize: "14px" }}>Loading parties...</p>;
-  if (error) return <p style={{ color: "#e24b4a", fontSize: "14px" }}>{error}</p>;
+  useEffect(() => { load(); }, []);
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: "20px", fontWeight: 500, margin: 0 }}>Parties</h1>
+        <div>
+          <h1 style={{ fontSize: "18px", fontWeight: 600, margin: "0 0 2px", letterSpacing: "-0.01em" }}>Parties</h1>
+          {!loading && !error && (
+            <p style={{ fontSize: "13px", color: "#aaa", margin: 0 }}>
+              {parties.length} {parties.length === 1 ? "party" : "parties"}
+            </p>
+          )}
+        </div>
       </div>
 
-      {parties.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "4rem 0", color: "#888", fontSize: "14px" }}>
-          No parties yet. Create one via the API to get started.
-        </div>
-      ) : (
+      {loading && <SkeletonList count={3} />}
+
+      {error && <ErrorState message={error} onRetry={load} />}
+
+      {!loading && !error && parties.length === 0 && (
+        <EmptyState
+          icon="🏢"
+          title="No parties yet"
+          description="Create importers, exporters, customs brokers and freight forwarders via the API to attach them to shipments."
+        />
+      )}
+
+      {!loading && !error && parties.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {parties.map((p) => {
             const roleStyle = ROLE_COLORS[p.role] || ROLE_COLORS.agent;
@@ -49,14 +66,19 @@ export default function Parties() {
                 justifyContent: "space-between",
               }}>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: "14px", marginBottom: "4px" }}>{p.name}</div>
-                  <div style={{ fontSize: "13px", color: "#888" }}>
-                    {p.country}{p.city ? ` · ${p.city}` : ""}
-                    {p.tax_pin ? ` · PIN: ${p.tax_pin}` : ""}
+                  <div style={{ fontWeight: 500, fontSize: "14px", marginBottom: "4px", color: "#1a1a1a" }}>
+                    {p.name}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#999" }}>
+                    {p.country}
+                    {p.city && <span> · {p.city}</span>}
+                    {p.tax_pin && <span style={{ margin: "0 4px", color: "#ddd" }}>·</span>}
+                    {p.tax_pin && <span>PIN: {p.tax_pin}</span>}
                   </div>
                 </div>
                 <span style={{
-                  fontSize: "12px", fontWeight: 500, padding: "3px 10px", borderRadius: "20px",
+                  fontSize: "12px", fontWeight: 500,
+                  padding: "3px 10px", borderRadius: "20px",
                   background: roleStyle.bg, color: roleStyle.color,
                 }}>
                   {p.role.replace(/_/g, " ")}
