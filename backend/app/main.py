@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import parties, shipments, documents
@@ -6,12 +7,17 @@ app = FastAPI(
     title="TradeLog Africa",
     description="Import/export shipment logger and document consolidator",
     version="0.1.0",
-    redirect_slasher=False
+    redirect_slashes=False,
 )
+
+allowed_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,6 +26,7 @@ app.add_middleware(
 app.include_router(parties.router, prefix="/api/v1")
 app.include_router(shipments.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
+
 
 @app.get("/health")
 def health():
