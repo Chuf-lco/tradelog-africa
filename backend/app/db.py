@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = ""
 
     model_config = {
-        "env_file": os.path.join(os.path.dirname(__file__), "../../.env"),
-        "extra": "ignore"
-    }
+    "env_file": os.path.join(os.path.dirname(__file__), "../../.env") if os.path.exists(os.path.join(os.path.dirname(__file__), "../../.env")) else None,
+    "extra": "ignore"
+}
 
 
 settings = Settings()
